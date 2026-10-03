@@ -122,7 +122,15 @@ evfilt_machport_knote_create(struct filter *filt, struct knote *kn)
     ev.events = kn->data.events;
     ev.data.ptr = kn;
 
+	{
+		static const char m0[] = "[machport-open] before-rpc\n";
+		(void)!write(2, m0, sizeof(m0) - 1);
+	}
 	int status = _dserver_rpc_kqchan_mach_port_open_4libkqueue(port, (void*)kn->kev.ext[0], kn->kev.ext[1], kn->kev.fflags, &kn->kdata.kn_dupfd);
+	{
+		static const char m1[] = "[machport-open] after-rpc\n";
+		(void)!write(2, m1, sizeof(m1) - 1);
+	}
 	if (status < 0) {
 		dbg_printf("evfilt_machport_open: %s", strerror(-status));
 		return (-1);
@@ -131,6 +139,10 @@ evfilt_machport_knote_create(struct filter *filt, struct knote *kn)
 	dbg_printf("evfilt_machport_open: listening to FD %d for events %d", kn->kdata.kn_dupfd, ev.events);
 
     fcntl(kn->kdata.kn_dupfd, F_SETFD, FD_CLOEXEC);
+    {
+        static const char m2[] = "[machport-open] after-fcntl\n";
+        (void)!write(2, m2, sizeof(m2) - 1);
+    }
 
     if (epoll_ctl(kn->kn_epollfd, EPOLL_CTL_ADD, kn->kdata.kn_dupfd, &ev) < 0) {
         dbg_printf("epoll_ctl(2): %s", strerror(errno));

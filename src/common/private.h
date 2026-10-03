@@ -146,6 +146,8 @@ struct filter {
 #endif
 };
 
+RB_PROTOTYPE(knt, knote, kn_entries, knote_cmp)
+
 /* Use this to declare a filter that is not implemented */
 #define EVFILT_NOTIMPL { 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 

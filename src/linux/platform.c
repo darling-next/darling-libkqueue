@@ -31,13 +31,34 @@
 static pthread_key_t epevt_key;
 static pthread_once_t epevt_once = PTHREAD_ONCE_INIT;
 
+static void
+linux_filter_free(struct kqueue *kq UNUSED, struct filter *filt)
+{
+    struct knote *kn, *next;
+
+    /*
+     * Final teardown has no live kevent users. Close owned descriptors without
+     * changing their kernel objects: an atfork child shares its parent's
+     * epoll registrations and timers. Do not take inherited filter locks.
+     * Linux notes own one descriptor; only timers keep it outside kdata.
+     */
+    RB_FOREACH_SAFE(kn, knt, &filt->kf_knote, next) {
+        int fd = filt->kf_id == EVFILT_TIMER ? kn->data.pfd : kn->kdata.kn_dupfd;
+
+        RB_REMOVE(knt, &filt->kf_knote, kn);
+        if (fd >= 0)
+            __close_for_kqueue(fd);
+        free(kn);
+    }
+}
+
 const struct kqueue_vtable kqops = {
     linux_kqueue_init,
     linux_kqueue_free,
 	linux_kevent_wait,
 	linux_kevent_copyout,
 	NULL,
-	NULL,
+    linux_filter_free,
     linux_eventfd_init,
     linux_eventfd_close,
     linux_eventfd_raise,
