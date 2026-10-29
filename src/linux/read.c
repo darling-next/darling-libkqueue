@@ -123,16 +123,13 @@ evfilt_read_copyout(struct kevent64_s *dst, struct knote *src, void *ptr)
          */
         dst->data = 1;
     } else {
-        /* On return, data contains the number of bytes of protocol
-           data available to read.
-         */
+        /* FIONREAD is an instantaneous byte count, not an EOF indication:
+         * another reader may already have drained the reported readiness.
+         * Only the epoll close flags above establish end-of-stream. */
         if (ioctl(dst->ident, FIONREAD, &dst->data) < 0) {
             /* race condition with socket close, so ignore this error */
             dbg_puts("ioctl(2) of socket failed");
             dst->data = 0;
-        } else {
-            if (dst->data == 0)
-                dst->flags |= EV_EOF;
         }
     }
 
